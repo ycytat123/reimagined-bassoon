@@ -10,11 +10,11 @@ jobs:
   # Windows x64 build (with UPX packing)
   # =============================================
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     outputs:
       artifact-name: ${{ steps.artifact.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -32,7 +32,7 @@ jobs:
           upx --best --lzma "build/LTCReader_artefacts/Release/VST3/LTC Reader.vst3/Contents/x86_64-win/LTC Reader.vst3"
 
       - name: Upload VST3 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: LTC-Reader-Windows-x64
           path: build/LTCReader_artefacts/Release/VST3/
@@ -41,9 +41,9 @@ jobs:
   # macOS Universal (x86_64 + ARM64) build
   # =============================================
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -57,7 +57,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Upload VST3 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: LTC-Reader-macOS-Universal
           path: |
@@ -72,13 +72,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Windows artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: LTC-Reader-Windows-x64
           path: release/Windows
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: LTC-Reader-macOS-Universal
           path: release/macOS
@@ -89,7 +89,7 @@ jobs:
           zip -r ../LTC-Reader-All-Platforms.zip .
 
       - name: Upload release bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: LTC-Reader-All-Platforms
           path: LTC-Reader-All-Platforms.zip
