@@ -56,13 +56,26 @@ jobs:
       - name: Build Release
         run: cmake --build build --config Release
 
-      - name: Upload VST3 artifact
+      - name: Create macOS .pkg installer
+        run: |
+          chmod +x installer/macos/build_pkg.sh
+          VERSION=$(grep -oP 'VERSION \K[0-9.]+' CMakeLists.txt | head -1)
+          echo "Plugin version: ${VERSION}"
+          bash installer/macos/build_pkg.sh build "${VERSION:-1.0.0}" build
+
+      - name: Upload VST3/AU artifact
         uses: actions/upload-artifact@v5
         with:
           name: LTC-Reader-macOS-Universal
           path: |
             build/LTCReader_artefacts/Release/VST3/
             build/LTCReader_artefacts/Release/AU/
+
+      - name: Upload macOS .pkg installer
+        uses: actions/upload-artifact@v5
+        with:
+          name: LTC-Reader-macOS-Installer
+          path: build/LTC Reader *.pkg
 
   # =============================================
   # Create release bundle (cross-platform ZIP)
@@ -82,6 +95,12 @@ jobs:
         with:
           name: LTC-Reader-macOS-Universal
           path: release/macOS
+
+      - name: Download macOS .pkg installer
+        uses: actions/download-artifact@v5
+        with:
+          name: LTC-Reader-macOS-Installer
+          path: release
 
       - name: Create release ZIP
         run: |
