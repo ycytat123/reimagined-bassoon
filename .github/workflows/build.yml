@@ -1,0 +1,95 @@
+name: Build LTC Reader VST3
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  # =============================================
+  # Windows x64 build (with UPX packing)
+  # =============================================
+  build-windows:
+    runs-on: windows-latest
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake (Windows x64)
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Install UPX
+        run: choco install upx -y
+
+      - name: Pack VST3 with UPX
+        run: |
+          upx --best --lzma "build/LTCReader_artefacts/Release/VST3/LTC Reader.vst3/Contents/x86_64-win/LTC Reader.vst3"
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LTC-Reader-Windows-x64
+          path: build/LTCReader_artefacts/Release/VST3/
+
+  # =============================================
+  # macOS Universal (x86_64 + ARM64) build
+  # =============================================
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake (macOS Universal)
+        run: |
+          cmake -B build -G Xcode \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LTC-Reader-macOS-Universal
+          path: |
+            build/LTCReader_artefacts/Release/VST3/
+            build/LTCReader_artefacts/Release/AU/
+
+  # =============================================
+  # Create release bundle (cross-platform ZIP)
+  # =============================================
+  package:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: LTC-Reader-Windows-x64
+          path: release/Windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: LTC-Reader-macOS-Universal
+          path: release/macOS
+
+      - name: Create release ZIP
+        run: |
+          cd release
+          zip -r ../LTC-Reader-All-Platforms.zip .
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: LTC-Reader-All-Platforms
+          path: LTC-Reader-All-Platforms.zip

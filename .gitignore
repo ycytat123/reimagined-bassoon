@@ -1,1 +1,10 @@
 .claude/
+build/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+.vs/
+out/
