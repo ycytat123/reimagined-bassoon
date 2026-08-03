@@ -1,5 +1,9 @@
 #include "LicenseVerifier.h"
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4244)  // possible loss of data (BigInteger<->size_t)
+#endif
+
 // ==============================================================================
 // License file format
 // ==============================================================================
