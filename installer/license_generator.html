@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LTC Reader — 授权文件生成器</title>
+<style>
+  :root {
+    --bg: #1a1d23;
+    --surface: #24272e;
+    --surface2: #2a2e36;
+    --border: #3a3e47;
+    --text: #d4d4d4;
+    --text-muted: #6b737c;
+    --accent: #4ec9b0;
+    --accent-hover: #3cb394;
+    --danger: #f44747;
+    --warning: #e5c07b;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+    user-select: none;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+
+  .header p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  label .hint {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  input[type="text"],
+  input[type="date"] {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: "Consolas", "Cascadia Code", monospace;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus,
+  input[type="date"]:focus {
+    border-color: var(--accent);
+  }
+
+  .key-area {
+    position: relative;
+  }
+
+  .key-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--surface2);
+  }
+
+  .key-dropzone:hover,
+  .key-dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(78, 201, 176, 0.04);
+  }
+
+  .key-dropzone.loaded {
+    border-color: var(--accent);
+    border-style: solid;
+    background: rgba(78, 201, 176, 0.06);
+  }
+
+  .key-dropzone .icon {
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+
+  .key-dropzone .key-label {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .key-dropzone .key-sublabel {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .key-dropzone.loaded .key-label { color: var(--accent); }
+
+  .file-input-hidden { display: none; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 20px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #1a1d23;
+  }
+
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { background: var(--border); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .btn-row .btn { flex: 1; }
+
+  /* ── Output / Status ─────────────────────────────── */
+  .status {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: "Consolas", "Cascadia Code", monospace;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .status.success {
+    display: block;
+    background: rgba(78, 201, 176, 0.08);
+    color: var(--accent);
+    border: 1px solid rgba(78, 201, 176, 0.2);
+  }
+
+  .status.error {
+    display: block;
+    background: rgba(244, 71, 71, 0.08);
+    color: var(--danger);
+    border: 1px solid rgba(244, 71, 71, 0.2);
+  }
+
+  .status.info {
+    display: block;
+    background: rgba(229, 192, 123, 0.08);
+    color: var(--warning);
+    border: 1px solid rgba(229, 192, 123, 0.2);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .badge-ok {
+    background: rgba(78, 201, 176, 0.15);
+    color: var(--accent);
+  }
+
+  .badge-warn {
+    background: rgba(229, 192, 123, 0.15);
+    color: var(--warning);
+  }
+
+  .badge-err {
+    background: rgba(244, 71, 71, 0.15);
+    color: var(--danger);
+  }
+
+  /* ── Footer ──────────────────────────────────────── */
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── Header ───────────────────────────────────── -->
+  <div class="header">
+    <h1>LTC Reader 授权文件生成器</h1>
+    <p>输入客户机器码，一键生成 .ltclic 授权文件</p>
+  </div>
+
+  <!-- ── Step 1: 加载私钥 ─────────────────────────── -->
+  <div class="card">
+    <div class="card-title">① 加载私钥</div>
+
+    <div class="key-area">
+      <div class="key-dropzone" id="keyDropzone"
+           onclick="document.getElementById('keyFileInput').click()">
+        <div class="icon" id="keyIcon">🔑</div>
+        <div class="key-label" id="keyLabel">点击选择 license_private.pem</div>
+        <div class="key-sublabel" id="keySublabel">或将文件拖放到此处</div>
+      </div>
+      <input type="file" id="keyFileInput" class="file-input-hidden"
+             accept=".pem,.key,text/plain" />
+    </div>
+  </div>
+
+  <!-- ── Step 2: 授权信息 ──────────────────────────── -->
+  <div class="card">
+    <div class="card-title">② 授权信息</div>
+
+    <div class="form-group">
+      <label>授权客户 <span class="hint">— 被授权方名称</span></label>
+      <input type="text" id="licenseeInput"
+             placeholder="例如：北京录音棚" autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <label>机器码 <span class="hint">— 来自客户插件界面显示的 ID</span></label>
+      <input type="text" id="machineIdInput"
+             placeholder="例如：ABCDEF12-34567890" autocomplete="off"
+             style="text-transform: uppercase;" />
+    </div>
+
+    <div class="form-group">
+      <label>到期日 <span class="hint">— 留空表示永久授权</span></label>
+      <input type="date" id="expiryInput" />
+    </div>
+  </div>
+
+  <!-- ── Actions ───────────────────────────────────── -->
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="inspectBtn" disabled>
+      📋 预览 Payload
+    </button>
+    <button class="btn btn-primary" id="generateBtn" disabled>
+      ⚡ 生成授权文件
+    </button>
+  </div>
+
+  <!-- ── Status ────────────────────────────────────── -->
+  <div class="status" id="statusBox"></div>
+
+  <div class="footer">
+    LTC Reader License Generator &nbsp;|&nbsp; RSA-4096 · SHA-256 · PKCS#1 v1.5
+  </div>
+</div>
+
+<script>
+// =========================================================================
+// State
+// =========================================================================
+let cryptoKey = null;
+let keyFileName = '';
+
+// DOM refs
+const keyDropzone   = document.getElementById('keyDropzone');
+const keyFileInput  = document.getElementById('keyFileInput');
+const keyIcon       = document.getElementById('keyIcon');
+const keyLabel      = document.getElementById('keyLabel');
+const keySublabel   = document.getElementById('keySublabel');
+const licenseeInput = document.getElementById('licenseeInput');
+const machineInput  = document.getElementById('machineIdInput');
+const expiryInput   = document.getElementById('expiryInput');
+const generateBtn   = document.getElementById('generateBtn');
+const inspectBtn    = document.getElementById('inspectBtn');
+const statusBox     = document.getElementById('statusBox');
+
+// =========================================================================
+// Key loading
+// =========================================================================
+
+keyDropzone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  keyDropzone.classList.add('dragover');
+});
+
+keyDropzone.addEventListener('dragleave', () => {
+  keyDropzone.classList.remove('dragover');
+});
+
+keyDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  keyDropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadPrivateKey(file);
+});
+
+keyFileInput.addEventListener('change', () => {
+  const file = keyFileInput.files[0];
+  if (file) loadPrivateKey(file);
+});
+
+async function loadPrivateKey(file) {
+  statusBox.className = 'status info';
+  statusBox.style.display = 'block';
+  statusBox.textContent = '正在解析私钥…';
+
+  try {
+    const pemText = await file.text();
+    const keyData = pemToArrayBuffer(pemText);
+
+    // Import as PKCS#8 private key
+    cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      keyData,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,  // not extractable
+      ['sign']
+    );
+
+    keyFileName = file.name;
+    keyIcon.textContent = '✅';
+    keyLabel.textContent = keyFileName;
+    keySublabel.textContent = '私钥已就绪 — RSA-4096 PKCS#8';
+    keyDropzone.classList.add('loaded');
+
+    updateButtons();
+    showStatus('success', `私钥加载成功 — ${keyFileName} (RSA-4096)`);
+  } catch (err) {
+    cryptoKey = null;
+    keyIcon.textContent = '❌';
+    keyLabel.textContent = '密钥加载失败，请重试';
+    keySublabel.textContent = '确认为 PKCS#8 格式的 RSA 私钥';
+    keyDropzone.classList.remove('loaded');
+    updateButtons();
+    showStatus('error', `密钥加载失败: ${err.message}`);
+  }
+}
+
+function pemToArrayBuffer(pemText) {
+  // Strip PEM headers and whitespace
+  const b64 = pemText
+    .replace(/-----[\w\s]+-----/g, '')
+    .replace(/[\s\r\n]+/g, '');
+
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+// =========================================================================
+// Input validation
+// =========================================================================
+
+function updateButtons() {
+  const hasKey = cryptoKey !== null;
+  const hasLicensee = licenseeInput.value.trim().length > 0;
+  const hasMachine = machineInput.value.trim().length >= 8;
+
+  generateBtn.disabled = !(hasKey && hasLicensee && hasMachine);
+  inspectBtn.disabled = !(hasLicensee && hasMachine);
+}
+
+licenseeInput.addEventListener('input', updateButtons);
+machineInput.addEventListener('input', updateButtons);
+
+// Auto-uppercase machine ID for consistency
+machineInput.addEventListener('input', () => {
+  const caret = machineInput.selectionStart;
+  machineInput.value = machineInput.value.toUpperCase();
+  machineInput.setSelectionRange(caret, caret);
+});
+
+// =========================================================================
+// Payload builder
+// =========================================================================
+
+function buildPayload() {
+  const licensee = licenseeInput.value.trim();
+  const machineId = machineInput.value.trim().toUpperCase();
+  const expiry = expiryInput.value || 'perpetual';
+
+  return `licensee=${licensee}\nmachine_id=${machineId}\nexpiry=${expiry}`;
+}
+
+// =========================================================================
+// Generate
+// =========================================================================
+
+generateBtn.addEventListener('click', async () => {
+  if (!cryptoKey) {
+    showStatus('error', '请先加载私钥');
+    return;
+  }
+
+  statusBox.className = 'status info';
+  statusBox.style.display = 'block';
+  statusBox.textContent = '正在签名…';
+
+  try {
+    const payload = buildPayload();
+    const payloadBytes = new TextEncoder().encode(payload);
+
+    // RSA-4096 SHA-256 PKCS#1 v1.5 signature
+    const signature = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      cryptoKey,
+      payloadBytes
+    );
+
+    // Build blob: payload + signature
+    const blob = new Uint8Array(payloadBytes.length + signature.byteLength);
+    blob.set(payloadBytes, 0);
+    blob.set(new Uint8Array(signature), payloadBytes.length);
+
+    // Base64 encode
+    const base64 = arrayBufferToBase64(blob.buffer);
+
+    // Download
+    const licensee = licenseeInput.value.trim().replace(/[\\/:*?"<>|]/g, '_');
+    const machineId = machineInput.value.trim().toUpperCase();
+    const filename = `${licensee}_${machineId}.ltclic`.replace(/\s+/g, '_');
+
+    downloadFile(filename, base64);
+
+    showStatus('success',
+      `✅ 授权文件已生成: ${filename}\n` +
+      `   授权客户: ${licenseeInput.value.trim()}\n` +
+      `   机器码:   ${machineId}\n` +
+      `   到期日:   ${expiryInput.value || '永久'}\n` +
+      `   签名:     ${signature.byteLength} 字节 (RSA-4096)`
+    );
+  } catch (err) {
+    showStatus('error', `签名失败: ${err.message}`);
+  }
+});
+
+// =========================================================================
+// Inspect (preview payload without signing)
+// =========================================================================
+
+inspectBtn.addEventListener('click', () => {
+  const payload = buildPayload();
+  const payloadBytes = new TextEncoder().encode(payload);
+
+  showStatus('info',
+    `📋 Payload 预览 (未签名)：\n` +
+    `${'─'.repeat(40)}\n` +
+    `${payload}\n` +
+    `${'─'.repeat(40)}\n` +
+    `Payload 大小: ${payloadBytes.length} 字节\n` +
+    `签名后将追加 512 字节 RSA-4096 签名`
+  );
+});
+
+// =========================================================================
+// Helpers
+// =========================================================================
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function downloadFile(filename, content) {
+  const blob = new Blob([content], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function showStatus(type, message) {
+  statusBox.className = `status ${type}`;
+  statusBox.style.display = 'block';
+  statusBox.textContent = message;
+}
+
+// =========================================================================
+// Init
+// =========================================================================
+// Default expiry to empty (perpetual)
+expiryInput.value = '';
+</script>
+</body>
+</html>

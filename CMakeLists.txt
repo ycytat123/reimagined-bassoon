@@ -84,3 +84,25 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tools/machineid.cpp)
     target_link_libraries(machineid_tool PRIVATE juce_cryptography)
     juce_generate_juce_header(machineid_tool)
 endif()
+
+# ─────────────────────────────────────────────────────────────────────
+# License Generator: GUI app for generating .ltclic license files
+# Build:  cmake --build build --config Release --target license_gen
+# ─────────────────────────────────────────────────────────────────────
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tools/license_gen.cpp)
+    juce_add_gui_app(license_gen
+        PRODUCT_NAME          "LTC License Generator"
+        COMPANY_NAME          "Hahahah"
+        BUNDLE_ID             "com.hahahah.licensegen"
+    )
+    target_sources(license_gen PRIVATE
+        tools/license_gen.cpp
+        src/LicenseSigner.cpp
+    )
+    target_include_directories(license_gen PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}/license_gen_artefacts/JuceLibraryCode
+        src
+    )
+    target_link_libraries(license_gen PRIVATE juce_cryptography juce_gui_basics juce_gui_extra)
+    juce_generate_juce_header(license_gen)
+endif()
