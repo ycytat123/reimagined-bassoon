@@ -65,3 +65,22 @@ target_compile_definitions(LTCReader PRIVATE
 # Enable juce_cryptography for RSA license verification (SHA-256 hashing)
 target_link_libraries(LTCReader PRIVATE ltc juce_cryptography)
 target_include_directories(LTCReader PRIVATE src)
+
+# ─────────────────────────────────────────────────────────────────────
+# Debug tool: prints the machine ID the plugin computes (for licensing)
+# Build:  cmake --build build --config Release --target machineid_tool
+# ─────────────────────────────────────────────────────────────────────
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tools/machineid.cpp)
+    juce_add_console_app(machineid_tool
+        PRODUCT_NAME          "machineid_tool"
+        COMPANY_NAME          "Hahahah"
+        BUNDLE_ID             "com.hahahah.machineidtool"
+    )
+    target_sources(machineid_tool PRIVATE tools/machineid.cpp src/LicenseVerifier.cpp)
+    target_include_directories(machineid_tool PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}/machineid_tool_artefacts/JuceLibraryCode
+        src
+    )
+    target_link_libraries(machineid_tool PRIVATE juce_cryptography)
+    juce_generate_juce_header(machineid_tool)
+endif()

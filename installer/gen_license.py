@@ -147,11 +147,28 @@ def generate_license(licensee, machine_id, expiry="perpetual"):
     print(f"  签名： {len(sig)} 字节 (RSA-4096)")
     print(f"  机器码： {machine_id}")
 
-    # 拼接 + base64
+    # 拼接 + 标准 base64（MSB-first，与 openssl / 插件内实现兼容）
     blob = payload_bytes + sig
     encoded = base64.b64encode(blob).decode("ascii")
 
     return encoded
+
+
+def _decode_license(content):
+    """解析许可证内容，兼容 JUCE 格式 (<n>.<base64>) 和纯 base64"""
+    content = content.strip()
+    if "." in content[:8]:
+        num_part, _, b64_part = content.partition(".")
+        try:
+            expected = int(num_part)
+            data = base64.b64decode(b64_part)
+            if len(data) != expected:
+                raise ValueError(f"长度不匹配: 声明 {expected}, 实际 {len(data)}")
+            return data
+        except ValueError:
+            # 前缀不是数字，当作纯 base64
+            return base64.b64decode(content)
+    return base64.b64decode(content)
 
 
 def inspect_license(filepath):
@@ -161,9 +178,9 @@ def inspect_license(filepath):
         return
 
     with open(filepath, "r", encoding="utf-8") as f:
-        content = f.read().strip()
+        content = f.read()
 
-    decoded = base64.b64decode(content)
+    decoded = _decode_license(content)
     payload_len = len(decoded) - 512  # RSA-4096 sig = 512 bytes
 
     if payload_len <= 0:

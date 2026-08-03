@@ -145,11 +145,39 @@ bool LicenseVerifier::parseLicenseBlob(const juce::String& blob,
 {
     auto clean = blob.trim().removeCharacters(" \t\r\n");
 
-    juce::MemoryBlock decoded;
-    if (!decoded.fromBase64Encoding(clean))
-        return false;
-
+    // ── Standard base64 decode (MSB-first) ──
+    // NOTE: we implement this ourselves — juce::MemoryBlock::fromBase64Encoding
+    // uses LSB-first bit ordering (getBitRange), which is NOT compatible with
+    // standard base64 produced by openssl / Python / any standard encoder.
     static constexpr size_t kKeyBytes = 512; // RSA-4096
+
+    juce::MemoryBlock decoded(clean.length() * 3 / 4 + 4);
+    auto* out = static_cast<uint8_t*>(decoded.getData());
+    size_t outLen = 0;
+    int buffer = 0;
+    int bits = 0;
+
+    for (int i = 0; i < clean.length(); ++i)
+    {
+        char c = static_cast<char>(clean[i]);
+        int v;
+        if      (c >= 'A' && c <= 'Z') v = c - 'A';
+        else if (c >= 'a' && c <= 'z') v = c - 'a' + 26;
+        else if (c >= '0' && c <= '9') v = c - '0' + 52;
+        else if (c == '+')             v = 62;
+        else if (c == '/')             v = 63;
+        else if (c == '=')             break;
+        else                           continue;
+
+        buffer = (buffer << 6) | v;
+        bits += 6;
+        if (bits >= 8)
+        {
+            bits -= 8;
+            out[outLen++] = static_cast<uint8_t>((buffer >> bits) & 0xFF);
+        }
+    }
+    decoded.setSize(outLen);
 
     if (decoded.getSize() < kKeyBytes + 10)
         return false;
@@ -159,7 +187,14 @@ bool LicenseVerifier::parseLicenseBlob(const juce::String& blob,
 
     auto* data = static_cast<const char*>(decoded.getData());
 
-    payload = juce::String(juce::CharPointer_UTF8(data), payloadLen);
+    // Count UTF-8 lead bytes to build the String from a correct char count
+    // (payload may contain non-ASCII licensee names).
+    size_t numChars = 0;
+    for (size_t i = 0; i < payloadLen; ++i)
+        if ((static_cast<uint8_t>(data[i]) & 0xC0) != 0x80)
+            ++numChars;
+
+    payload = juce::String(juce::CharPointer_UTF8(data), numChars);
 
     signature = juce::MemoryBlock(
         static_cast<const uint8_t*>(decoded.getData()) + payloadLen,
@@ -177,24 +212,22 @@ namespace
     // Embedded RSA-4096 public key: modulus (n) and exponent (e) as hex.
     // Generated from installer/license_public.pem
     constexpr const char* kModulusHex =
-        "BCC7230D2CA25CA2332D95FC32B71364464851ECC69F32B55F81DD9013"
-        "67188ECC3A9C7C0D19DACB00586757D029224A01F736DD864CA9DEDBA3"
-        "1D70D92368F5C0E03B45E8126D774BBE363C517C093AB666F7B6D4D180"
-        "2E0F05A9D3D352FF1824C0AB57FF5B5A7CB50E7EDC701B37C2A90F2E60"
-        "C9600C1AFCEBF321A8B98100A00BB426878E6CBFACB8209593EE503829"
-        "9E64DD3530CB56230A30BB5777007935F549858767D1BF926ED6994781"
-        "8074BC639E8999EB8CC9589BCD55EFA34C2EF8812DC2DD2E43B6B7E421"
-        "5D128F42661E418CCED90B1C1E1EB6FC7BD16817BE263172276C0BB35E"
-        "29CE6B7A770FDE87D5ED8C7F29EB6F87F70C42F035FA398D68BF12131E"
-        "FE0E76B64936AE7018B55D15CAADF543DC8474AABB70BE3F6895C0B6ED"
-        "3252C813FAE9ABA26770BBE2C403A2AE6A6B19F05CE54A45E1849B3545"
-        "3A18310966658BA6CBC9A05146467757C8935DEC45084472F923885A8F"
-        "DE61ACE107CB33525F56B86B076DB9CAE1C55A3C634155E719109A7D03"
-        "731B1F9FDF4E5BF0EA7DAA86F8560510B87A5733BF09F2D8A23CCDF186"
-        "5A470F1D2E8E452D280740F68F77CC6125D6AAD270E9161404CB892F5E"
-        "CFF84C4699486F1C9FB51FC1C6A84F8CA788A78BCB73D30C491A7AB21B"
-        "9D048F61622371779B383D9D97200FD502C0758BC80AAD911471090054"
-        "D8CD2DE6235ECDC834734815D19B0EC5EFDA03";
+        "BCC7230D2CA25CA2332D95FC32B71364464851ECC69F32B55F81DD901367188E"
+        "CCDAAC7C0D19DACB00586757D029224A01F736DD864CA9DEDBA31D71D92368F5"
+        "C0E03B45E8126D774BBE363C517C053AB666F7B6D4D1802E0F05A9D3D352FF18"
+        "24C0AB57FF5B5A7CB50E7EDC761B37C2A90F2E60C9600C1AFCEBF321A8B98106"
+        "A00BB426878E6CBFACB8209593EE5038299E64DD3530CB56230A30BB57770079"
+        "35F549858767D1BF926ED69947818074BC639E8999EB8CC9589BCD55EFA04C2E"
+        "F8812DC2DD2E43B6B7E4215D128F42661E418CCED90B1C1E1EB6FC7BD16817BE"
+        "263172276C0BB35E29CE6B7A770FDE87D5ED8C7F29EB6F87F70C42F035FA398D"
+        "68BF12131EFE0E76B64936AE7018B55D15CAADF543DC8474AABB70BE3F6895C0"
+        "B6ED3252C813FAE9ABA26770BBE2C403A2AE6A6B19F05CE54A45E1849B35453A"
+        "18310966658BA6CBC9A05146467757C8935DEC45084472F923885A8FDE61ACE1"
+        "07CB33525F56B86B076DB9CAE1C55A3C634155E719109A7D03731B1F9FDF4E5B"
+        "F0EA7DAA86F8560510B87A5733BF09F2D8A23CCDF1865A070F1D2E8E452D2807"
+        "40F68F77CC6125D6AAD270E9161404CB892F5ECFF84C4699486F1C9FB51FC1C6"
+        "A84F8CA788A78BCB73D30C491A7AB21B9D048F61622371779B383D9D97200FD5"
+        "02C0758BC80AAD911471090054D8CD2DE6235ECDC834734815D19B0EC5EFDA03";
 
     constexpr const char* kExponentHex = "010001";  // 65537
 
@@ -236,12 +269,6 @@ namespace
 
             juce::BigInteger remainder;
             e.divideBy(two, remainder);
-            e = e - remainder; // not needed since integer division, but
-                               // divideBy modifies in-place; remainder is discarded
-            // Actually divideBy modifies 'e' in-place — check:
-            // void divideBy(const BigInteger& divisor, BigInteger& remainder);
-            // It sets this = quotient, remainder = remainder.
-            // But we already called it above. Let me re-check...
 
             b = b * b;
             b %= modulus;
@@ -282,25 +309,35 @@ bool LicenseVerifier::verifySignature(const juce::String& payload,
     modulus.parseString(kModulusHex, 16);
     exponent.parseString(kExponentHex, 16);
 
-    // 4. Load signature as BigInteger (big-endian)
+    // 4. Load signature as BigInteger.
+    //    RSA signatures are big-endian, but juce::BigInteger::loadFromMemoryBlock
+    //    expects little-endian — so reverse the bytes first.
+    auto* sigData = static_cast<const uint8_t*>(signature.getData());
     juce::BigInteger sigValue;
-    sigValue.loadFromMemoryBlock(signature);
+    {
+        juce::MemoryBlock le(kKeyBytes);
+        auto* dst = static_cast<uint8_t*>(le.getData());
+        for (size_t i = 0; i < kKeyBytes; ++i)
+            dst[i] = sigData[kKeyBytes - 1 - i];
+        sigValue.loadFromMemoryBlock(le);
+    }
 
     // 5. RSA verify: decrypted = sig^e mod n
     juce::BigInteger decrypted = modPow(sigValue, exponent, modulus);
 
-    // 6. Convert decrypted to raw 512-byte block (big-endian, left-padded)
+    // 6. Convert decrypted to big-endian 512-byte block (left-padded with zeros).
+    //    toMemoryBlock() yields little-endian, so reverse into the output.
     juce::MemoryBlock decryptedBlock(kKeyBytes, true);
     auto decRaw = decrypted.toMemoryBlock();
     size_t decLen = decRaw.getSize();
     auto* decData = static_cast<uint8_t*>(decryptedBlock.getData());
+    auto* srcData = static_cast<const uint8_t*>(decRaw.getData());
 
-    if (decLen <= kKeyBytes)
-        memcpy(decData + (kKeyBytes - decLen), decRaw.getData(), decLen);
-    else
-        memcpy(decData,
-               static_cast<const uint8_t*>(decRaw.getData()) + (decLen - kKeyBytes),
-               kKeyBytes);
+    if (decLen > kKeyBytes)  // should never happen (result < modulus = 512 bytes)
+        decLen = kKeyBytes;
+
+    for (size_t i = 0; i < decLen; ++i)
+        decData[kKeyBytes - 1 - i] = srcData[i];
 
     // 7. Constant-time comparison
     bool ok = true;
