@@ -56,17 +56,16 @@ void LtcReaderAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // Clear unused output channels
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear(i, 0, buffer.getNumSamples());
-
-    // If not licensed, mute output and skip decoding
+    // Mute if NOT licensed: clear ALL output channels (full silence)
     if (!licensed)
     {
         for (auto ch = 0; ch < totalNumOutputChannels; ++ch)
             buffer.clear(ch, 0, buffer.getNumSamples());
         return;
     }
+
+    // --- Licensed: normal LTC decoding ---
+
 
     // Pass-through: copy input to output
     for (auto ch = 0; ch < totalNumInputChannels; ++ch)
