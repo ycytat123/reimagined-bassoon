@@ -12,3 +12,10 @@ out/
 # RSA private key — NEVER commit this
 installer/license_private.pem
 *.pem.private
+
+# Generated license files (test artifacts)
+installer/*.ltclic
+
+# Release artifacts
+release/
+installer/*.exe
