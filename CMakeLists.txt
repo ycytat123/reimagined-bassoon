@@ -24,6 +24,7 @@ set(PluginSources
     src/LtcDecoder.cpp
     src/TimecodeDisplay.cpp
     src/DarkTheme.cpp
+    src/LicenseVerifier.cpp
 )
 
 # JUCE plugin target
@@ -61,5 +62,6 @@ target_compile_definitions(LTCReader PRIVATE
     JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1
 )
 
-target_link_libraries(LTCReader PRIVATE ltc)
+# Enable juce_cryptography for RSA license verification (SHA-256 hashing)
+target_link_libraries(LTCReader PRIVATE ltc juce_cryptography)
 target_include_directories(LTCReader PRIVATE src)

@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "LtcDecoder.h"
+#include "LicenseVerifier.h"
 
 class LtcReaderAudioProcessor : public juce::AudioProcessor
 {
@@ -38,9 +39,17 @@ public:
     // Thread-safe access for the GUI
     TimecodeInfo getLatestTimecode() const;
 
+    // License state (checked once at construction)
+    bool isLicensed() const { return licensed; }
+    juce::String getLicenseStatus() const { return licenseStatus; }
+
 private:
     std::unique_ptr<LtcDecoder> ltcDecoder;
     bool muted = true;
+    bool licensed = false;
+    juce::String licenseStatus;
+
+    void performLicenseCheck();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LtcReaderAudioProcessor)
 };

@@ -20,6 +20,9 @@ private:
     LtcReaderAudioProcessor& processor;
     TimecodeDisplay timecodeDisplay;
     DarkTheme darkTheme;
+    juce::Label licenseLabel;
+
+    void updateLicenseLabel();
 
     // Signal-watchdog: how long since the last frame was received
     juce::int64 lastSeenFrameCount = 0;

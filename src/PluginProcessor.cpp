@@ -6,10 +6,28 @@ LtcReaderAudioProcessor::LtcReaderAudioProcessor()
         .withInput("Input", juce::AudioChannelSet::mono(), true)
         .withOutput("Output", juce::AudioChannelSet::mono(), true))
 {
-    // Decoder will be created in prepareToPlay
+    performLicenseCheck();
 }
 
 LtcReaderAudioProcessor::~LtcReaderAudioProcessor() = default;
+
+void LtcReaderAudioProcessor::performLicenseCheck()
+{
+    auto result = LicenseVerifier::checkStandardLocations();
+
+    licensed = result.authorized;
+
+    if (licensed)
+    {
+        licenseStatus = "Licensed to " + result.licensee;
+        if (result.expiryDate != "perpetual")
+            licenseStatus += " (expires " + result.expiryDate + ")";
+    }
+    else
+    {
+        licenseStatus = result.error;
+    }
+}
 
 bool LtcReaderAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
@@ -41,6 +59,14 @@ void LtcReaderAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
     // Clear unused output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
+
+    // If not licensed, mute output and skip decoding
+    if (!licensed)
+    {
+        for (auto ch = 0; ch < totalNumOutputChannels; ++ch)
+            buffer.clear(ch, 0, buffer.getNumSamples());
+        return;
+    }
 
     // Pass-through: copy input to output
     for (auto ch = 0; ch < totalNumInputChannels; ++ch)

@@ -8,3 +8,7 @@ CMakeFiles/
 cmake-build-*/
 .vs/
 out/
+
+# RSA private key — NEVER commit this
+installer/license_private.pem
+*.pem.private
