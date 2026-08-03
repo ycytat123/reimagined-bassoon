@@ -3,7 +3,10 @@
 #include <JuceHeader.h>
 #include "LtcDecoder.h"
 
-// Custom component that renders the timecode digits
+// ==============================================================================
+// Sci-fi HUD timecode display: gradient bg, grid, scan line, glowing digits,
+// LED status, title header.
+// ==============================================================================
 class TimecodeDisplay : public juce::Component
 {
 public:
@@ -17,18 +20,34 @@ public:
     // Set whether an LTC signal is currently being received
     void setSignalPresent(bool present);
 
+    // Set whether the plugin is licensed (affects display mode)
+    void setLicensed(bool lic);
+
 private:
     TimecodeInfo currentTimecode;
     bool signalPresent = false;
+    bool licensed = true;
 
-    // Colours for the display
-    juce::Colour bgColour      { 0xff21252b };
-    juce::Colour digitColour    { 0xfff0f0f0 };
-    juce::Colour separatorColour{ 0xffe8a840 }; // amber
-    juce::Colour dimmedColour  { 0xff555555 };
-    juce::Colour noSignalText  { 0xff8b949e };
-    juce::Colour signalGood     { 0xff4ec9b0 };
-    juce::Colour signalLost     { 0xff555555 };
+    // ── Palette (sci-fi HUD) ──
+    juce::Colour bgTop      { 0xff141c29 };
+    juce::Colour bgBottom   { 0xff090e17 };
+    juce::Colour panelBorder{ 0xff26364c };
+    juce::Colour accent     { 0xff00e5ff };  // cyan
+    juce::Colour textMain   { 0xffe3f9ff };
+    juce::Colour textDim    { 0xff5b6d80 };
+    juce::Colour amber      { 0xffffb347 };
+    juce::Colour green      { 0xff4af0c0 };
+    juce::Colour red        { 0xffff5f56 };
+    juce::Colour grey       { 0xff3f4c5c };
+
+    // ── Helpers ──
+    void drawGrid(juce::Graphics& g, juce::Rectangle<float> b);
+    void drawScanLine(juce::Graphics& g, float height);
+    void drawLed(juce::Graphics& g, float x, float y);
+    void drawHeader(juce::Graphics& g, juce::Rectangle<float> b);
+    void drawGlowText(juce::Graphics& g, const juce::String& text,
+                      const juce::Font& font, float x, float y,
+                      const juce::Colour& glowColour, float blurRadius);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TimecodeDisplay)
 };

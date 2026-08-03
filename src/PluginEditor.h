@@ -16,12 +16,15 @@ public:
     void resized() override;
     void timerCallback() override;
 
+    // Click the machine-ID label to copy it to the clipboard
+    void mouseUp(const juce::MouseEvent& e) override;
+
 private:
     LtcReaderAudioProcessor& processor;
     TimecodeDisplay timecodeDisplay;
     DarkTheme darkTheme;
-    juce::Label machineIdLabel;   // shows the machine ID
-    juce::Label licenseLabel;     // shows license status
+    juce::Label machineIdLabel;   // only visible when unlicensed
+    juce::Label licenseLabel;     // license status
 
     void updateLicenseLabel();
 
