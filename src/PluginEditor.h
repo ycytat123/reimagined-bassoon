@@ -20,10 +20,14 @@ private:
     LtcReaderAudioProcessor& processor;
     TimecodeDisplay timecodeDisplay;
     DarkTheme darkTheme;
+    juce::Label machineIdLabel;   // shows the machine ID
+    juce::Label licenseLabel;     // shows license status
 
-    // Signal-watchdog: how long since the last frame was received
+    void updateLicenseLabel();
+
+    // Signal-watchdog
     juce::int64 lastSeenFrameCount = 0;
-    juce::uint32 lastSeenTime = 0; // juce::Time::getMillisecondCounter()
+    juce::uint32 lastSeenTime = 0;
     static constexpr juce::uint32 signalTimeoutMs = 250;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LtcReaderAudioProcessorEditor)

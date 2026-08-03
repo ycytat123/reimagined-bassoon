@@ -42,6 +42,7 @@ public:
     // License state (checked once at construction)
     bool isLicensed() const { return licensed; }
     juce::String getLicenseStatus() const { return licenseStatus; }
+    juce::String getMachineId() const { return LicenseVerifier::getMachineId(); }
 
 private:
     std::unique_ptr<LtcDecoder> ltcDecoder;
